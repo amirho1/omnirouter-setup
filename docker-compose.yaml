@@ -1,7 +1,6 @@
 services:
   redis:
     image: docker.io/library/redis:8.6.5-alpine
-    container_name: omniroute-redis
     restart: unless-stopped
     volumes:
       - redis-data:/data
@@ -12,27 +11,27 @@ services:
       timeout: 5s
       retries: 3
     networks:
-      - dokploy-network
+      - omniroute-internal
 
   omniroute:
     image: diegosouzapw/omniroute:latest
-    container_name: omniroute
     restart: unless-stopped
     stop_grace_period: 40s
-    env_file: .env
     environment:
+      - NODE_ENV=production
+      - PORT=20128
+      - API_PORT=20129
       - DATA_DIR=/app/data
       - REDIS_URL=redis://redis:6379
       - REQUIRE_API_KEY=true
       - NEXT_PUBLIC_BASE_URL=https://aiproxy.web-father.ir
+      - BASE_URL=http://localhost:20128
       - OMNIROUTE_TRUST_PROXY=true
-      - JWT_SECRET=${JWT_SECRET:-}
-      - INITIAL_PASSWORD=${INITIAL_PASSWORD:-}
-    # ports:
-    #   # Loopback-only by default. Override APP_BIND_HOST in .env to expose.
-    #   - "${APP_BIND_HOST:-127.0.0.1}:${DASHBOARD_PORT:-20128}:${DASHBOARD_PORT:-20128}"
-    #   - "${APP_BIND_HOST:-127.0.0.1}:${API_PORT:-20129}:${API_PORT:-20129}"
-    #   - "${APP_BIND_HOST:-127.0.0.1}:${LIVE_WS_PORT:-20132}:${LIVE_WS_PORT:-20132}"
+      - AUTH_COOKIE_SECURE=true
+      # Provide these in Dokploy's "Environment" tab:
+      - JWT_SECRET=${JWT_SECRET}
+      - STORAGE_ENCRYPTION_KEY=${STORAGE_ENCRYPTION_KEY}
+      - INITIAL_PASSWORD=${INITIAL_PASSWORD}
     volumes:
       - omniroute-data:/app/data
     depends_on:
@@ -45,6 +44,7 @@ services:
       retries: 3
       start_period: 20s
     networks:
+      - omniroute-internal
       - dokploy-network
 
 volumes:
@@ -52,6 +52,8 @@ volumes:
   redis-data:
 
 networks:
+  omniroute-internal:
+    driver: bridge
   dokploy-network:
     external: true
     name: ${DOKPLOY_NETWORK:-dokploy-network}
